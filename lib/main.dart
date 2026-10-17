@@ -1,0 +1,1138 @@
+import 'dart:math';
+
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'models/study_goal.dart';
+import 'providers/tracker_provider.dart';
+import 'screens/add_edit_goal_dialog.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final trackerProvider = TrackerProvider();
+  await trackerProvider.init();
+
+  runApp(
+    ChangeNotifierProvider.value(
+      value: trackerProvider,
+      child: const StudyTrackerApp(),
+    ),
+  );
+}
+
+class StudyTrackerApp extends StatelessWidget {
+  const StudyTrackerApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Lern-Tracker',
+      theme: ThemeData.dark().copyWith(
+        scaffoldBackgroundColor: const Color(0xFF0D1117),
+        cardTheme: const CardThemeData(
+          color: Color(0xFF161B22),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(14))),
+          elevation: 0,
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: const Color(0xFF161B22),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+          ),
+          focusedBorder: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(10)),
+            borderSide: BorderSide(color: Color(0xFF2EA043), width: 1.5),
+          ),
+        ),
+      ),
+      home: const MainNavigationScreen(),
+    );
+  }
+}
+
+class MainNavigationScreen extends StatefulWidget {
+  const MainNavigationScreen({super.key});
+
+  @override
+  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
+}
+
+class _MainNavigationScreenState extends State<MainNavigationScreen> {
+  int _currentNavIndex = 0; // 0 = Lernerfolg, 1 = Hausaufgaben
+
+  final Color cardColor = const Color(0xFF161B22);
+  final Color accentColor = const Color(0xFF2EA043);
+  final Color successColor = const Color(0xFF58A6FF);
+  final Color secondaryTextColor = const Color(0xFF8B949E);
+
+  void _openGoalSelector(BuildContext context, TrackerProvider provider) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: cardColor,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                      color: const Color(0xFF30363D),
+                      borderRadius: BorderRadius.circular(2)),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Deine Abschlüsse',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold)),
+                    IconButton(
+                      icon: Icon(Icons.add_circle, color: accentColor, size: 28),
+                      tooltip: 'Neuen Abschluss hinzufügen',
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _openAddEditGoalDialog(context);
+                      },
+                    ),
+                  ],
+                ),
+                const Divider(color: Colors.white12),
+                if (provider.goals.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20.0),
+                    child: Text('Noch keine Abschlüsse angelegt.',
+                        style: TextStyle(color: secondaryTextColor)),
+                  )
+                else
+                  ...provider.goals.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final goal = entry.value;
+                    final isSelected = index == provider.selectedGoalIndex;
+
+                    return Material(
+                      color: isSelected
+                          ? accentColor.withOpacity(0.15)
+                          : const Color(0xFF0D1117),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: isSelected
+                                  ? accentColor.withOpacity(0.5)
+                                  : Colors.white.withOpacity(0.06)),
+                        ),
+                        child: ListTile(
+                          title: Text(goal.title,
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal)),
+                          subtitle: Text(
+                            "Endprüfung: ${goal.finalExamDate.day}.${goal.finalExamDate.month}.${goal.finalExamDate.year}",
+                            style: TextStyle(
+                                color: secondaryTextColor, fontSize: 12),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined,
+                                    color: Colors.grey, size: 20),
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  _openAddEditGoalDialog(context, goal: goal);
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline,
+                                    color: Colors.redAccent, size: 20),
+                                onPressed: () =>
+                                    provider.deleteGoal(goal.id!),
+                              ),
+                            ],
+                          ),
+                          onTap: () {
+                            provider.selectGoal(index);
+                            Navigator.pop(ctx);
+                          },
+                        ),
+                      ),
+                    );
+                  }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _openAddEditGoalDialog(BuildContext context, {StudyGoal? goal}) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => AddEditGoalDialog(goalToEdit: goal),
+    );
+  }
+
+  void _showNettoPhilosophyDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: BorderSide(color: Colors.white.withOpacity(0.08))),
+        title: Row(
+          children: [
+            Icon(Icons.timer_outlined, color: accentColor, size: 24),
+            const SizedBox(width: 10),
+            const Text("Die Netto-Lernzeit",
+                style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18)),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1C1917),
+                  borderRadius: BorderRadius.circular(12),
+                  border:
+                      Border.all(color: Colors.amber.shade700.withOpacity(0.3)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.warning_amber_rounded,
+                        color: Colors.amber.shade400, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "3 Stunden physische Anwesenheit in der Bib sind keine 3 Stunden Lernen, wenn man Kaffeepausen macht oder das Handy checkt.",
+                        style: TextStyle(
+                            color: Colors.amber.shade200,
+                            fontSize: 12,
+                            height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text("Die Stoppuhr-Methode:",
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14)),
+              const SizedBox(height: 6),
+              Text(
+                "• Nimm eine Smartwatch oder Armbanduhr mit Stoppuhr.\n"
+                "• Starte die Uhr nur, wenn du aktiv denkst und liest.\n"
+                "• Pausiere die Uhr bei jeder Unterbrechung sofort.\n"
+                "• Trage abends nur die tatsächliche Netto-Zeit hier ein.",
+                style: TextStyle(
+                    color: secondaryTextColor, fontSize: 13, height: 1.5),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: accentColor,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Verstanden",
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = Provider.of<TrackerProvider>(context);
+    final currentGoal = provider.currentGoal;
+    final track = _currentNavIndex == 0 ? 'study' : 'homework';
+
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // --- HEADER ---
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: () => _openGoalSelector(context, provider),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                currentGoal?.title ?? 'Kein Abschluss angelegt',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 19,
+                                  letterSpacing: -0.4,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Icon(Icons.keyboard_arrow_down_rounded,
+                                color: successColor, size: 22),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.info_outline_rounded,
+                        color: secondaryTextColor, size: 22),
+                    tooltip: 'Das Prinzip der Netto-Lernzeit',
+                    onPressed: () => _showNettoPhilosophyDialog(context),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.add, color: accentColor, size: 26),
+                    tooltip: 'Neuen Abschluss anlegen',
+                    onPressed: () => _openAddEditGoalDialog(context),
+                  ),
+                ],
+              ),
+            ),
+
+            // --- INHALT ODER EMPTY-STATE ---
+            Expanded(
+              child: currentGoal == null
+                  ? _buildEmptyOnboardingState(context)
+                  : SubTrackView(
+                      key: ValueKey("${currentGoal.id}_$track"),
+                      goal: currentGoal,
+                      track: track,
+                    ),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: NavigationBar(
+        backgroundColor: const Color(0xFF020617),
+        indicatorColor: accentColor.withOpacity(0.2),
+        selectedIndex: _currentNavIndex,
+        onDestinationSelected: (int index) {
+          setState(() {
+            _currentNavIndex = index;
+          });
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.school_outlined, color: Colors.grey),
+            selectedIcon: Icon(Icons.school, color: Color(0xFF2EA043)),
+            label: 'Lernerfolg',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.assignment_outlined, color: Colors.grey),
+            selectedIcon: Icon(Icons.assignment, color: Color(0xFF2EA043)),
+            label: 'Hausaufgaben',
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- AUSFÜHRLICHER ONBOARDING-SCREEN MIT WARNDREIECK & SMARTWATCH-TIPP ---
+  Widget _buildEmptyOnboardingState(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 16.0),
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withOpacity(0.06)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.35),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Icon(Icons.timer_outlined, size: 32, color: accentColor),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Miss deine echte Netto-Zeit',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+
+            // 1. GELBE WARN-BOX: Selbstbetrug & Bib-Falle
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1C1917),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                    color: Colors.amber.shade700.withOpacity(0.4), width: 1.2),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.warning_amber_rounded,
+                      color: Colors.amber.shade400, size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Vermeide den Selbstbetrug!',
+                          style: TextStyle(
+                            color: Colors.amber.shade300,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Unser Zeitgefühl ist extrem trügerisch: Wer 3 Stunden in der Bibliothek sitzt, '
+                          'aber nach 20 Minuten raucht, aufs Smartphone schaut oder quatscht, '
+                          'hat nicht 3 Stunden gelernt – sondern vielleicht nur 45 echte Minuten. '
+                          'In 45 Minuten Netto-Zeit kannst du den Stoff von 3 Stunden nicht beherrschen.',
+                          style: TextStyle(
+                            color: Colors.grey.shade300,
+                            fontSize: 12,
+                            height: 1.45,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // 2. TIPP-BOX: Smartwatch / Stoppuhr-Methode
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                    color: successColor.withOpacity(0.25), width: 1.2),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.watch_outlined, color: successColor, size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Die Smartwatch- / Stoppuhr-Methode:',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '• Nutze am besten eine Smartwatch oder Armbanduhr mit Stoppuhr.\n'
+                          '• Start: Drücke Start genau dann, wenn du dich voll auf das Skript konzentrierst.\n'
+                          '• Pause: Qualmt der Kopf oder schaust du aus dem Fenster? Stoppuhr sofort anhalten!\n'
+                          '• Erfassen: Trage nur die gestoppte Netto-Zeit hier ein. Sei 100% ehrlich zu dir selbst.',
+                          style: TextStyle(
+                            color: secondaryTextColor,
+                            fontSize: 12,
+                            height: 1.45,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            SizedBox(
+              height: 50,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accentColor,
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: const Icon(Icons.add_circle_outline,
+                    color: Colors.white, size: 20),
+                label: const Text(
+                  'Deinen ersten Abschluss anlegen',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15),
+                ),
+                onPressed: () => _openAddEditGoalDialog(context),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class SubTrackView extends StatefulWidget {
+  final StudyGoal goal;
+  final String track;
+
+  const SubTrackView({super.key, required this.goal, required this.track});
+
+  @override
+  State<SubTrackView> createState() => _SubTrackViewState();
+}
+
+class _SubTrackViewState extends State<SubTrackView>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final TextEditingController _hoursController = TextEditingController();
+  final TextEditingController _minutesController = TextEditingController();
+
+  final Color backgroundColor = const Color(0xFF0D1117);
+  final Color cardColor = const Color(0xFF161B22);
+  final Color accentColor = const Color(0xFF2EA043);
+  final Color successColor = const Color(0xFF58A6FF);
+  final Color secondaryTextColor = const Color(0xFF8B949E);
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _hoursController.dispose();
+    _minutesController.dispose();
+    super.dispose();
+  }
+
+  String _formatDate(DateTime d) {
+    return "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = Provider.of<TrackerProvider>(context);
+
+    return Column(
+      children: [
+        Container(
+          margin: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+          height: 44,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white.withOpacity(0.06)),
+          ),
+          child: TabBar(
+            controller: _tabController,
+            indicatorSize: TabBarIndicatorSize.tab,
+            dividerColor: Colors.transparent,
+            indicator: BoxDecoration(
+              color: successColor.withOpacity(0.18),
+              borderRadius: BorderRadius.circular(10),
+              border:
+                  Border.all(color: successColor.withOpacity(0.5), width: 1),
+            ),
+            labelColor: Colors.white,
+            unselectedLabelColor: secondaryTextColor,
+            labelStyle:
+                const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            unselectedLabelStyle:
+                const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+            tabs: const [
+              Tab(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.edit_note_rounded, size: 17),
+                    SizedBox(width: 6),
+                    Text("Erfassung"),
+                  ],
+                ),
+              ),
+              Tab(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.grid_view_rounded, size: 16),
+                    SizedBox(width: 6),
+                    Text("Jahres-Heatmap"),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: FutureBuilder<Map<String, dynamic>>(
+            future: provider.getTrackStats(widget.track),
+            builder: (ctx, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Center(
+                    child: CircularProgressIndicator(color: successColor));
+              }
+
+              final stats = snapshot.data ?? {};
+              final int todayMinutes = stats['todayMinutes'] ?? 0;
+              final int weeklyMinutes = stats['weeklyMinutes'] ?? 0;
+              final int totalMinutes = stats['totalMinutes'] ?? 0;
+              final List<Map<String, dynamic>> pastWeeks =
+                  stats['pastWeeks'] ?? [];
+              final Map<String, int> dailyMap = stats['dailyMap'] ?? {};
+
+              return TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildInputTab(todayMinutes, weeklyMinutes, totalMinutes,
+                      pastWeeks, provider),
+                  _buildHeatmapTab(dailyMap),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInputTab(int todayMinutes, int weeklyMinutes, int totalMinutes,
+      List<Map<String, dynamic>> pastWeeks, TrackerProvider provider) {
+    final today = DateTime.now();
+
+    DateTime targetDate = widget.goal.finalExamDate;
+    String targetLabel = "Endprüfung";
+
+    if (widget.goal.intermediateExamDate != null &&
+        widget.goal.intermediateExamDate!.isAfter(today)) {
+      targetDate = widget.goal.intermediateExamDate!;
+      targetLabel = "Zwischenprüfung";
+    }
+
+    final daysLeft = max(0, targetDate.difference(today).inDays);
+    final weeksLeft = (daysLeft / 7).floor();
+
+    final weeklyHours = weeklyMinutes ~/ 60;
+    final weeklyMins = weeklyMinutes % 60;
+    final totalHours = totalMinutes ~/ 60;
+    final totalMins = totalMinutes % 60;
+    final todayHours = todayMinutes ~/ 60;
+    final todayMins = todayMinutes % 60;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 4.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Card(
+            margin: const EdgeInsets.only(bottom: 8.0),
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+              child: Column(
+                children: [
+                  Text('Diese Woche erfasst',
+                      style: TextStyle(
+                          fontSize: 14,
+                          color: secondaryTextColor,
+                          fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  Text('${weeklyHours}h ${weeklyMins}m',
+                      style: TextStyle(
+                          fontSize: 38,
+                          fontWeight: FontWeight.w800,
+                          color: accentColor)),
+                ],
+              ),
+            ),
+          ),
+          Card(
+            margin: const EdgeInsets.only(bottom: 8.0),
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.all_inclusive, color: successColor, size: 20),
+                      const SizedBox(width: 10),
+                      const Text('Gesamte Zeit:',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white70)),
+                    ],
+                  ),
+                  Text('${totalHours}h ${totalMins}m',
+                      style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
+                ],
+              ),
+            ),
+          ),
+          Card(
+            margin: const EdgeInsets.only(bottom: 12.0),
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+              child: Row(
+                children: [
+                  Icon(Icons.flag_rounded, color: accentColor, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Noch $weeksLeft Wochen ($daysLeft Tage) bis zur $targetLabel!',
+                      style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Heute erfasst:',
+                        style: TextStyle(
+                            fontSize: 12, color: secondaryTextColor)),
+                    Text('${todayHours}h ${todayMins}m',
+                        style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white)),
+                  ],
+                ),
+                IconButton(
+                  onPressed: () => _showEditDialog(todayMinutes, provider),
+                  icon: const Icon(Icons.edit_outlined,
+                      color: Colors.grey, size: 20),
+                )
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 48,
+                  child: TextField(
+                    controller: _hoursController,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(fontSize: 15),
+                    decoration: const InputDecoration(
+                        labelText: 'Stunden',
+                        suffixText: 'h',
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SizedBox(
+                  height: 48,
+                  child: TextField(
+                    controller: _minutesController,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(fontSize: 15),
+                    decoration: const InputDecoration(
+                        labelText: 'Minuten',
+                        suffixText: 'm',
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 46,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                final h = int.tryParse(_hoursController.text) ?? 0;
+                final m = int.tryParse(_minutesController.text) ?? 0;
+                if (h == 0 && m == 0) return;
+                provider.addMinutes(widget.track, (h * 60) + m);
+                _hoursController.clear();
+                _minutesController.clear();
+                FocusScope.of(context).unfocus();
+              },
+              icon: const Icon(Icons.add, size: 20),
+              label: const Text('Zeit hinzufügen',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: accentColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          if (pastWeeks.isNotEmpty) ...[
+            Card(
+              margin: const EdgeInsets.only(bottom: 24.0),
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Lernfortschritt Historie',
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: secondaryTextColor,
+                                fontWeight: FontWeight.w600)),
+                        Text('${pastWeeks.length} Wochen',
+                            style: TextStyle(
+                                fontSize: 12, color: secondaryTextColor)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ...pastWeeks.map((weekData) {
+                      final mins = weekData['minutes'] as int;
+                      final h = mins ~/ 60;
+                      final m = mins % 60;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(weekData['label'] as String,
+                                style: const TextStyle(
+                                    color: Colors.white70, fontSize: 13)),
+                            Text('${h}h ${m}m',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    fontSize: 13)),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // --- DIE 5-STUFIGE JAHRES-HEATMAP (AB 20 MINUTEN AKTIV) ---
+  Widget _buildHeatmapTab(Map<String, int> dailyMap) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    const int totalWeeks = 52;
+
+    final startDate = today.subtract(const Duration(days: (totalWeeks * 7) - 1));
+
+    int activeDaysCount = 0;
+    for (int d = 0; d < 365; d++) {
+      final date = today.subtract(Duration(days: d));
+      final dateKey = _formatDate(date);
+      if ((dailyMap[dateKey] ?? 0) >= 20) {
+        activeDaysCount++;
+      }
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('365 Tage Übersicht',
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: accentColor.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: accentColor.withOpacity(0.4)),
+                    ),
+                    child: Text(
+                      '$activeDaysCount / 365 Tage',
+                      style: TextStyle(
+                          color: accentColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Aktiv ab 20 Min. Je länger du gelernt hast, desto kräftiger leuchtet das Feld.',
+                style: TextStyle(fontSize: 11, color: secondaryTextColor),
+              ),
+              const SizedBox(height: 12),
+
+              Row(
+                children: List.generate(totalWeeks, (colIndex) {
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 0.25),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: List.generate(7, (rowIndex) {
+                          final dayOffset = (colIndex * 7) + rowIndex;
+                          final currentDay =
+                              startDate.add(Duration(days: dayOffset));
+
+                          if (currentDay.isAfter(today)) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 0.25),
+                              child: AspectRatio(
+                                  aspectRatio: 1, child: SizedBox.shrink()),
+                            );
+                          }
+
+                          final dateKey = _formatDate(currentDay);
+                          final minutes = dailyMap[dateKey] ?? 0;
+
+                          Color boxColor = backgroundColor;
+                          if (minutes >= 20) {
+                            if (minutes >= 180) {
+                              boxColor = const Color(0xFF15803D); // >= 3h
+                            } else if (minutes >= 135) {
+                              boxColor = const Color(0xFF22C55E); // >= 2h 15m
+                            } else if (minutes >= 90) {
+                              boxColor = const Color(0xFF4ADE80); // >= 1h 30m
+                            } else if (minutes >= 45) {
+                              boxColor = const Color(0xFF86EFAC); // >= 45m
+                            } else {
+                              boxColor = const Color(0xFFD1FAE5); // 20 - 44m
+                            }
+                          }
+
+                          return Padding(
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 0.25),
+                            child: AspectRatio(
+                              aspectRatio: 1,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: boxColor,
+                                  borderRadius: BorderRadius.circular(1.0),
+                                  border: Border.all(
+                                    color: minutes >= 20
+                                        ? boxColor
+                                        : Colors.white.withOpacity(0.04),
+                                    width: 0.4,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+
+              const SizedBox(height: 12),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text('< 20m',
+                      style: TextStyle(
+                          color: secondaryTextColor, fontSize: 9)),
+                  const SizedBox(width: 3),
+                  _buildLegendBox(backgroundColor),
+                  const SizedBox(width: 4),
+                  _buildLegendBox(const Color(0xFFD1FAE5)),
+                  const SizedBox(width: 2),
+                  _buildLegendBox(const Color(0xFF86EFAC)),
+                  const SizedBox(width: 2),
+                  _buildLegendBox(const Color(0xFF4ADE80)),
+                  const SizedBox(width: 2),
+                  _buildLegendBox(const Color(0xFF22C55E)),
+                  const SizedBox(width: 2),
+                  _buildLegendBox(const Color(0xFF15803D)),
+                  const SizedBox(width: 3),
+                  Text('≥ 3h',
+                      style: TextStyle(
+                          color: secondaryTextColor, fontSize: 9)),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLegendBox(Color color) {
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(2),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+    );
+  }
+
+  Future<void> _showEditDialog(
+      int currentMinutes, TrackerProvider provider) async {
+    final hController =
+        TextEditingController(text: (currentMinutes ~/ 60).toString());
+    final mController =
+        TextEditingController(text: (currentMinutes % 60).toString());
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: cardColor,
+        title: const Text('Korrektur für heute',
+            style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Gib die exakte Zeit ein, die heute insgesamt gelten soll.',
+                style: TextStyle(color: secondaryTextColor, fontSize: 13)),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                    child: TextField(
+                        controller: hController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                            labelText: 'Stunden', suffixText: 'h'))),
+                const SizedBox(width: 16),
+                Expanded(
+                    child: TextField(
+                        controller: mController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                            labelText: 'Minuten', suffixText: 'm'))),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Abbrechen',
+                  style: TextStyle(color: secondaryTextColor))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: accentColor, foregroundColor: Colors.white),
+            onPressed: () {
+              final h = int.tryParse(hController.text) ?? 0;
+              final m = int.tryParse(mController.text) ?? 0;
+              provider.setTodayMinutes(widget.track, (h * 60) + m);
+              Navigator.pop(ctx);
+            },
+            child: const Text('Speichern'),
+          ),
+        ],
+      ),
+    );
+  }
+}
