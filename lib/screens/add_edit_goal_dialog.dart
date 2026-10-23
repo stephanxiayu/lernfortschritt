@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import 'package:intl/intl.dart';
+import 'package:lernfortschritt/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
 import '../models/study_goal.dart';
@@ -42,7 +44,10 @@ class _AddEditGoalDialogState extends State<AddEditGoalDialog> {
   }
 
   Future<void> _selectDate(BuildContext context, bool isFinal) async {
-    final initial = isFinal ? _finalExamDate : (_intermediateExamDate ?? DateTime.now().add(const Duration(days: 90)));
+    final initial = isFinal
+        ? _finalExamDate
+        : (_intermediateExamDate ??
+            DateTime.now().add(const Duration(days: 90)));
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
@@ -79,7 +84,8 @@ class _AddEditGoalDialogState extends State<AddEditGoalDialog> {
         id: widget.goalToEdit!.id,
         title: title,
         finalExamDate: _finalExamDate,
-        intermediateExamDate: _hasIntermediateExam ? _intermediateExamDate : null,
+        intermediateExamDate:
+            _hasIntermediateExam ? _intermediateExamDate : null,
         createdAt: widget.goalToEdit!.createdAt,
       );
       provider.updateGoal(updated);
@@ -90,10 +96,13 @@ class _AddEditGoalDialogState extends State<AddEditGoalDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('dd.MM.yyyy');
+    final l10n = AppLocalizations.of(context)!;
+    final currentLocaleStr = Localizations.localeOf(context).toString();
+    final dateFormat = DateFormat.yMd(currentLocaleStr);
 
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+      padding: EdgeInsets.fromLTRB(
+          20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -104,24 +113,34 @@ class _AddEditGoalDialogState extends State<AddEditGoalDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              widget.goalToEdit == null ? 'Neuen Abschluss anlegen' : 'Abschluss bearbeiten',
-              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              widget.goalToEdit == null
+                  ? l10n.create_degree_title
+                  : l10n.edit_degree_title,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _titleController,
               style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: 'Abschluss / Weiterbildung',
-                hintText: 'z.B. IHK Controller, IHK Betriebswirt',
+              decoration: InputDecoration(
+                labelText: l10n.degree_input_label,
+                hintText: l10n.degree_input_hint,
               ),
             ),
             const SizedBox(height: 16),
             // Endprüfung Datum
             ListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Endprüfung / Hauptprüfung', style: TextStyle(color: Colors.white, fontSize: 14)),
-              subtitle: Text(dateFormat.format(_finalExamDate), style: TextStyle(color: accentColor, fontWeight: FontWeight.bold)),
+              title: Text(l10n.exam_final_label,
+                  style: const TextStyle(color: Colors.white, fontSize: 14)),
+              subtitle: Text(
+                dateFormat.format(_finalExamDate),
+                style: TextStyle(
+                    color: accentColor, fontWeight: FontWeight.bold),
+              ),
               trailing: IconButton(
                 icon: const Icon(Icons.calendar_month, color: Colors.white70),
                 onPressed: () => _selectDate(context, true),
@@ -131,14 +150,16 @@ class _AddEditGoalDialogState extends State<AddEditGoalDialog> {
             // Schalter für Zwischenprüfung
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              activeColor: accentColor,
-              title: const Text('Hat Zwischenprüfung / WBQ', style: TextStyle(color: Colors.white, fontSize: 14)),
+              activeThumbColor: accentColor,
+              title: Text(l10n.intermediate_exam_switch,
+                  style: const TextStyle(color: Colors.white, fontSize: 14)),
               value: _hasIntermediateExam,
               onChanged: (val) {
                 setState(() {
                   _hasIntermediateExam = val;
                   if (val && _intermediateExamDate == null) {
-                    _intermediateExamDate = DateTime.now().add(const Duration(days: 90));
+                    _intermediateExamDate =
+                        DateTime.now().add(const Duration(days: 90));
                   }
                 });
               },
@@ -146,10 +167,15 @@ class _AddEditGoalDialogState extends State<AddEditGoalDialog> {
             if (_hasIntermediateExam) ...[
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Datum Zwischenprüfung', style: TextStyle(color: Colors.white, fontSize: 14)),
+                title: Text(l10n.intermediate_exam_label,
+                    style:
+                        const TextStyle(color: Colors.white, fontSize: 14)),
                 subtitle: Text(
-                  _intermediateExamDate != null ? dateFormat.format(_intermediateExamDate!) : 'Nicht festgelegt',
-                  style: const TextStyle(color: Color(0xFF58A6FF), fontWeight: FontWeight.bold),
+                  _intermediateExamDate != null
+                      ? dateFormat.format(_intermediateExamDate!)
+                      : l10n.not_set,
+                  style: const TextStyle(
+                      color: Color(0xFF58A6FF), fontWeight: FontWeight.bold),
                 ),
                 trailing: IconButton(
                   icon: const Icon(Icons.calendar_month, color: Colors.white70),
@@ -163,9 +189,16 @@ class _AddEditGoalDialogState extends State<AddEditGoalDialog> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: accentColor,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('Speichern', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              child: Text(
+                l10n.save,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16),
+              ),
             ),
           ],
         ),

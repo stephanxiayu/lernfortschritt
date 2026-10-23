@@ -1,6 +1,9 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+
+import 'package:intl/intl.dart';
+import 'package:lernfortschritt/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'models/study_goal.dart';
@@ -28,7 +31,17 @@ class StudyTrackerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Lern-Tracker',
+      onGenerateTitle: (context) => AppLocalizations.of(context)!.app_title,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      // Deutsch -> de, Chinesisch -> zh, alles andere Fallback auf en
+      localeResolutionCallback: (deviceLocale, supportedLocales) {
+        if (deviceLocale != null) {
+          if (deviceLocale.languageCode == 'de') return const Locale('de');
+          if (deviceLocale.languageCode == 'zh') return const Locale('zh');
+        }
+        return const Locale('en');
+      },
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF0D1117),
         cardTheme: const CardThemeData(
@@ -42,11 +55,11 @@ class StudyTrackerApp extends StatelessWidget {
           fillColor: const Color(0xFF161B22),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
           ),
           focusedBorder: const OutlineInputBorder(
             borderRadius: BorderRadius.all(Radius.circular(10)),
@@ -75,6 +88,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final Color secondaryTextColor = const Color(0xFF8B949E);
 
   void _openGoalSelector(BuildContext context, TrackerProvider provider) {
+    final l10n = AppLocalizations.of(context)!;
+    final currentLocaleStr = Localizations.localeOf(context).toString();
+
     showModalBottomSheet(
       context: context,
       backgroundColor: cardColor,
@@ -98,14 +114,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Deine Abschlüsse',
-                        style: TextStyle(
+                    Text(l10n.your_degrees,
+                        style: const TextStyle(
                             color: Colors.white,
                             fontSize: 18,
                             fontWeight: FontWeight.bold)),
                     IconButton(
                       icon: Icon(Icons.add_circle, color: accentColor, size: 28),
-                      tooltip: 'Neuen Abschluss hinzufügen',
+                      tooltip: l10n.new_degree_tooltip,
                       onPressed: () {
                         Navigator.pop(ctx);
                         _openAddEditGoalDialog(context);
@@ -117,7 +133,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 if (provider.goals.isEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 20.0),
-                    child: Text('Noch keine Abschlüsse angelegt.',
+                    child: Text(l10n.no_degrees_yet,
                         style: TextStyle(color: secondaryTextColor)),
                   )
                 else
@@ -128,7 +144,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
                     return Material(
                       color: isSelected
-                          ? accentColor.withOpacity(0.15)
+                          ? accentColor.withValues(alpha: 0.15)
                           : const Color(0xFF0D1117),
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
@@ -137,8 +153,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                               color: isSelected
-                                  ? accentColor.withOpacity(0.5)
-                                  : Colors.white.withOpacity(0.06)),
+                                  ? accentColor.withValues(alpha: 0.5)
+                                  : Colors.white.withValues(alpha: 0.06)),
                         ),
                         child: ListTile(
                           title: Text(goal.title,
@@ -148,7 +164,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                                       ? FontWeight.bold
                                       : FontWeight.normal)),
                           subtitle: Text(
-                            "Endprüfung: ${goal.finalExamDate.day}.${goal.finalExamDate.month}.${goal.finalExamDate.year}",
+                            "${l10n.final_exam_prefix}: ${DateFormat.yMd(currentLocaleStr).format(goal.finalExamDate)}",
                             style: TextStyle(
                                 color: secondaryTextColor, fontSize: 12),
                           ),
@@ -197,19 +213,21 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   void _showNettoPhilosophyDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: cardColor,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
-            side: BorderSide(color: Colors.white.withOpacity(0.08))),
+            side: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
         title: Row(
           children: [
             Icon(Icons.timer_outlined, color: accentColor, size: 24),
             const SizedBox(width: 10),
-            const Text("Die Netto-Lernzeit",
-                style: TextStyle(
+            Text(l10n.netto_time_title,
+                style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 18)),
@@ -226,7 +244,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   color: const Color(0xFF1C1917),
                   borderRadius: BorderRadius.circular(12),
                   border:
-                      Border.all(color: Colors.amber.shade700.withOpacity(0.3)),
+                      Border.all(color: Colors.amber.shade700.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,7 +254,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        "3 Stunden physische Anwesenheit in der Bib sind keine 3 Stunden Lernen, wenn man Kaffeepausen macht oder das Handy checkt.",
+                        l10n.netto_warning,
                         style: TextStyle(
                             color: Colors.amber.shade200,
                             fontSize: 12,
@@ -247,17 +265,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 ),
               ),
               const SizedBox(height: 14),
-              const Text("Die Stoppuhr-Methode:",
-                  style: TextStyle(
+              Text(l10n.stopwatch_method_title,
+                  style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 14)),
               const SizedBox(height: 6),
               Text(
-                "• Nimm eine Smartwatch oder Armbanduhr mit Stoppuhr.\n"
-                "• Starte die Uhr nur, wenn du aktiv denkst und liest.\n"
-                "• Pausiere die Uhr bei jeder Unterbrechung sofort.\n"
-                "• Trage abends nur die tatsächliche Netto-Zeit hier ein.",
+                l10n.stopwatch_method_body,
                 style: TextStyle(
                     color: secondaryTextColor, fontSize: 13, height: 1.5),
               ),
@@ -272,8 +287,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("Verstanden",
-                style: TextStyle(
+            child: Text(l10n.understood,
+                style: const TextStyle(
                     color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
@@ -286,6 +301,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final provider = Provider.of<TrackerProvider>(context);
     final currentGoal = provider.currentGoal;
     final track = _currentNavIndex == 0 ? 'study' : 'homework';
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       body: SafeArea(
@@ -308,7 +324,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           children: [
                             Flexible(
                               child: Text(
-                                currentGoal?.title ?? 'Kein Abschluss angelegt',
+                                currentGoal?.title ?? l10n.no_degrees_yet,
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w800,
@@ -330,12 +346,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   IconButton(
                     icon: Icon(Icons.info_outline_rounded,
                         color: secondaryTextColor, size: 22),
-                    tooltip: 'Das Prinzip der Netto-Lernzeit',
+                    tooltip: l10n.netto_philosophy_tooltip,
                     onPressed: () => _showNettoPhilosophyDialog(context),
                   ),
                   IconButton(
                     icon: Icon(Icons.add, color: accentColor, size: 26),
-                    tooltip: 'Neuen Abschluss anlegen',
+                    tooltip: l10n.new_degree_tooltip,
                     onPressed: () => _openAddEditGoalDialog(context),
                   ),
                 ],
@@ -357,23 +373,23 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ),
       bottomNavigationBar: NavigationBar(
         backgroundColor: const Color(0xFF020617),
-        indicatorColor: accentColor.withOpacity(0.2),
+        indicatorColor: accentColor.withValues(alpha: 0.2),
         selectedIndex: _currentNavIndex,
         onDestinationSelected: (int index) {
           setState(() {
             _currentNavIndex = index;
           });
         },
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.school_outlined, color: Colors.grey),
-            selectedIcon: Icon(Icons.school, color: Color(0xFF2EA043)),
-            label: 'Lernerfolg',
+            icon: const Icon(Icons.school_outlined, color: Colors.grey),
+            selectedIcon: const Icon(Icons.school, color: Color(0xFF2EA043)),
+            label: l10n.nav_study,
           ),
           NavigationDestination(
-            icon: Icon(Icons.assignment_outlined, color: Colors.grey),
-            selectedIcon: Icon(Icons.assignment, color: Color(0xFF2EA043)),
-            label: 'Hausaufgaben',
+            icon: const Icon(Icons.assignment_outlined, color: Colors.grey),
+            selectedIcon: const Icon(Icons.assignment, color: Color(0xFF2EA043)),
+            label: l10n.nav_homework,
           ),
         ],
       ),
@@ -382,6 +398,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   // --- AUSFÜHRLICHER ONBOARDING-SCREEN MIT WARNDREIECK & SMARTWATCH-TIPP ---
   Widget _buildEmptyOnboardingState(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 16.0),
@@ -396,10 +414,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 decoration: BoxDecoration(
                   color: cardColor,
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withOpacity(0.06)),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.35),
+                      color: Colors.black.withValues(alpha: 0.35),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -409,9 +427,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Miss deine echte Netto-Zeit',
-              style: TextStyle(
+            Text(
+              l10n.onboarding_title,
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
@@ -428,7 +446,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 color: const Color(0xFF1C1917),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                    color: Colors.amber.shade700.withOpacity(0.4), width: 1.2),
+                    color: Colors.amber.shade700.withValues(alpha: 0.4), width: 1.2),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -441,7 +459,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Vermeide den Selbstbetrug!',
+                          l10n.onboarding_warning_title,
                           style: TextStyle(
                             color: Colors.amber.shade300,
                             fontSize: 13,
@@ -450,10 +468,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Unser Zeitgefühl ist extrem trügerisch: Wer 3 Stunden in der Bibliothek sitzt, '
-                          'aber nach 20 Minuten raucht, aufs Smartphone schaut oder quatscht, '
-                          'hat nicht 3 Stunden gelernt – sondern vielleicht nur 45 echte Minuten. '
-                          'In 45 Minuten Netto-Zeit kannst du den Stoff von 3 Stunden nicht beherrschen.',
+                          l10n.onboarding_warning_body,
                           style: TextStyle(
                             color: Colors.grey.shade300,
                             fontSize: 12,
@@ -475,7 +490,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 color: cardColor,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                    color: successColor.withOpacity(0.25), width: 1.2),
+                    color: successColor.withValues(alpha: 0.25), width: 1.2),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -486,9 +501,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Die Smartwatch- / Stoppuhr-Methode:',
-                          style: TextStyle(
+                        Text(
+                          l10n.onboarding_tip_title,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
@@ -496,10 +511,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          '• Nutze am besten eine Smartwatch oder Armbanduhr mit Stoppuhr.\n'
-                          '• Start: Drücke Start genau dann, wenn du dich voll auf das Skript konzentrierst.\n'
-                          '• Pause: Qualmt der Kopf oder schaust du aus dem Fenster? Stoppuhr sofort anhalten!\n'
-                          '• Erfassen: Trage nur die gestoppte Netto-Zeit hier ein. Sei 100% ehrlich zu dir selbst.',
+                          l10n.onboarding_tip_body,
                           style: TextStyle(
                             color: secondaryTextColor,
                             fontSize: 12,
@@ -525,9 +537,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 ),
                 icon: const Icon(Icons.add_circle_outline,
                     color: Colors.white, size: 20),
-                label: const Text(
-                  'Deinen ersten Abschluss anlegen',
-                  style: TextStyle(
+                label: Text(
+                  l10n.first_degree_button,
+                  style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 15),
@@ -586,6 +598,7 @@ class _SubTrackViewState extends State<SubTrackView>
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<TrackerProvider>(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Column(
       children: [
@@ -596,17 +609,17 @@ class _SubTrackViewState extends State<SubTrackView>
           decoration: BoxDecoration(
             color: cardColor,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white.withOpacity(0.06)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
           ),
           child: TabBar(
             controller: _tabController,
             indicatorSize: TabBarIndicatorSize.tab,
             dividerColor: Colors.transparent,
             indicator: BoxDecoration(
-              color: successColor.withOpacity(0.18),
+              color: successColor.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(10),
               border:
-                  Border.all(color: successColor.withOpacity(0.5), width: 1),
+                  Border.all(color: successColor.withValues(alpha: 0.5), width: 1),
             ),
             labelColor: Colors.white,
             unselectedLabelColor: secondaryTextColor,
@@ -614,14 +627,14 @@ class _SubTrackViewState extends State<SubTrackView>
                 const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
             unselectedLabelStyle:
                 const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-            tabs: const [
+            tabs: [
               Tab(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.edit_note_rounded, size: 17),
-                    SizedBox(width: 6),
-                    Text("Erfassung"),
+                    const Icon(Icons.edit_note_rounded, size: 17),
+                    const SizedBox(width: 6),
+                    Text(l10n.tab_tracking),
                   ],
                 ),
               ),
@@ -629,9 +642,9 @@ class _SubTrackViewState extends State<SubTrackView>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.grid_view_rounded, size: 16),
-                    SizedBox(width: 6),
-                    Text("Jahres-Heatmap"),
+                    const Icon(Icons.grid_view_rounded, size: 16),
+                    const SizedBox(width: 6),
+                    Text(l10n.tab_heatmap),
                   ],
                 ),
               ),
@@ -672,15 +685,16 @@ class _SubTrackViewState extends State<SubTrackView>
 
   Widget _buildInputTab(int todayMinutes, int weeklyMinutes, int totalMinutes,
       List<Map<String, dynamic>> pastWeeks, TrackerProvider provider) {
+    final l10n = AppLocalizations.of(context)!;
     final today = DateTime.now();
 
     DateTime targetDate = widget.goal.finalExamDate;
-    String targetLabel = "Endprüfung";
+    String targetLabel = l10n.final_exam_prefix;
 
     if (widget.goal.intermediateExamDate != null &&
         widget.goal.intermediateExamDate!.isAfter(today)) {
       targetDate = widget.goal.intermediateExamDate!;
-      targetLabel = "Zwischenprüfung";
+      targetLabel = l10n.intermediate_exam_prefix;
     }
 
     final daysLeft = max(0, targetDate.difference(today).inDays);
@@ -692,6 +706,9 @@ class _SubTrackViewState extends State<SubTrackView>
     final totalMins = totalMinutes % 60;
     final todayHours = todayMinutes ~/ 60;
     final todayMins = todayMinutes % 60;
+
+    final hUnit = l10n.hours_unit;
+    final mUnit = l10n.minutes_unit;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 4.0),
@@ -705,13 +722,13 @@ class _SubTrackViewState extends State<SubTrackView>
                   const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
               child: Column(
                 children: [
-                  Text('Diese Woche erfasst',
+                  Text(l10n.week_tracked,
                       style: TextStyle(
                           fontSize: 14,
                           color: secondaryTextColor,
                           fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
-                  Text('${weeklyHours}h ${weeklyMins}m',
+                  Text('$weeklyHours$hUnit $weeklyMins$mUnit',
                       style: TextStyle(
                           fontSize: 38,
                           fontWeight: FontWeight.w800,
@@ -732,14 +749,14 @@ class _SubTrackViewState extends State<SubTrackView>
                     children: [
                       Icon(Icons.all_inclusive, color: successColor, size: 20),
                       const SizedBox(width: 10),
-                      const Text('Gesamte Zeit:',
-                          style: TextStyle(
+                      Text(l10n.total_time,
+                          style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
                               color: Colors.white70)),
                     ],
                   ),
-                  Text('${totalHours}h ${totalMins}m',
+                  Text('$totalHours$hUnit $totalMins$mUnit',
                       style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -759,7 +776,7 @@ class _SubTrackViewState extends State<SubTrackView>
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Noch $weeksLeft Wochen ($daysLeft Tage) bis zur $targetLabel!',
+                      l10n.countdown_text(weeksLeft, daysLeft, targetLabel),
                       style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
@@ -778,10 +795,10 @@ class _SubTrackViewState extends State<SubTrackView>
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Heute erfasst:',
+                    Text(l10n.today_tracked,
                         style: TextStyle(
                             fontSize: 12, color: secondaryTextColor)),
-                    Text('${todayHours}h ${todayMins}m',
+                    Text('$todayHours$hUnit $todayMins$mUnit',
                         style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -806,11 +823,11 @@ class _SubTrackViewState extends State<SubTrackView>
                     controller: _hoursController,
                     keyboardType: TextInputType.number,
                     style: const TextStyle(fontSize: 15),
-                    decoration: const InputDecoration(
-                        labelText: 'Stunden',
-                        suffixText: 'h',
-                        contentPadding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                    decoration: InputDecoration(
+                        labelText: l10n.hours_label,
+                        suffixText: hUnit,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8)),
                   ),
                 ),
               ),
@@ -822,11 +839,11 @@ class _SubTrackViewState extends State<SubTrackView>
                     controller: _minutesController,
                     keyboardType: TextInputType.number,
                     style: const TextStyle(fontSize: 15),
-                    decoration: const InputDecoration(
-                        labelText: 'Minuten',
-                        suffixText: 'm',
-                        contentPadding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                    decoration: InputDecoration(
+                        labelText: l10n.minutes_label,
+                        suffixText: mUnit,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8)),
                   ),
                 ),
               ),
@@ -846,8 +863,8 @@ class _SubTrackViewState extends State<SubTrackView>
                 FocusScope.of(context).unfocus();
               },
               icon: const Icon(Icons.add, size: 20),
-              label: const Text('Zeit hinzufügen',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              label: Text(l10n.add_time_button,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: accentColor,
                 foregroundColor: Colors.white,
@@ -868,12 +885,12 @@ class _SubTrackViewState extends State<SubTrackView>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Lernfortschritt Historie',
+                        Text(l10n.history_title,
                             style: TextStyle(
                                 fontSize: 13,
                                 color: secondaryTextColor,
                                 fontWeight: FontWeight.w600)),
-                        Text('${pastWeeks.length} Wochen',
+                        Text(l10n.history_weeks(pastWeeks.length),
                             style: TextStyle(
                                 fontSize: 12, color: secondaryTextColor)),
                       ],
@@ -891,7 +908,7 @@ class _SubTrackViewState extends State<SubTrackView>
                             Text(weekData['label'] as String,
                                 style: const TextStyle(
                                     color: Colors.white70, fontSize: 13)),
-                            Text('${h}h ${m}m',
+                            Text('$h$hUnit $m$mUnit',
                                 style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: Colors.white,
@@ -912,6 +929,7 @@ class _SubTrackViewState extends State<SubTrackView>
 
   // --- DIE 5-STUFIGE JAHRES-HEATMAP (AB 20 MINUTEN AKTIV) ---
   Widget _buildHeatmapTab(Map<String, int> dailyMap) {
+    final l10n = AppLocalizations.of(context)!;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     const int totalWeeks = 52;
@@ -938,8 +956,8 @@ class _SubTrackViewState extends State<SubTrackView>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('365 Tage Übersicht',
-                      style: TextStyle(
+                  Text(l10n.heatmap_title,
+                      style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                           color: Colors.white)),
@@ -947,12 +965,12 @@ class _SubTrackViewState extends State<SubTrackView>
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: accentColor.withOpacity(0.18),
+                      color: accentColor.withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: accentColor.withOpacity(0.4)),
+                      border: Border.all(color: accentColor.withValues(alpha: 0.4)),
                     ),
                     child: Text(
-                      '$activeDaysCount / 365 Tage',
+                      l10n.heatmap_days_ratio(activeDaysCount),
                       style: TextStyle(
                           color: accentColor,
                           fontWeight: FontWeight.bold,
@@ -963,7 +981,7 @@ class _SubTrackViewState extends State<SubTrackView>
               ),
               const SizedBox(height: 4),
               Text(
-                'Aktiv ab 20 Min. Je länger du gelernt hast, desto kräftiger leuchtet das Feld.',
+                l10n.heatmap_subtitle,
                 style: TextStyle(fontSize: 11, color: secondaryTextColor),
               ),
               const SizedBox(height: 12),
@@ -1018,7 +1036,7 @@ class _SubTrackViewState extends State<SubTrackView>
                                   border: Border.all(
                                     color: minutes >= 20
                                         ? boxColor
-                                        : Colors.white.withOpacity(0.04),
+                                        : Colors.white.withValues(alpha: 0.04),
                                     width: 0.4,
                                   ),
                                 ),
@@ -1037,7 +1055,7 @@ class _SubTrackViewState extends State<SubTrackView>
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Text('< 20m',
+                  Text(l10n.heatmap_legend_min,
                       style: TextStyle(
                           color: secondaryTextColor, fontSize: 9)),
                   const SizedBox(width: 3),
@@ -1053,7 +1071,7 @@ class _SubTrackViewState extends State<SubTrackView>
                   const SizedBox(width: 2),
                   _buildLegendBox(const Color(0xFF15803D)),
                   const SizedBox(width: 3),
-                  Text('≥ 3h',
+                  Text(l10n.heatmap_legend_max,
                       style: TextStyle(
                           color: secondaryTextColor, fontSize: 9)),
                 ],
@@ -1072,13 +1090,14 @@ class _SubTrackViewState extends State<SubTrackView>
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(2),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
     );
   }
 
   Future<void> _showEditDialog(
       int currentMinutes, TrackerProvider provider) async {
+    final l10n = AppLocalizations.of(context)!;
     final hController =
         TextEditingController(text: (currentMinutes ~/ 60).toString());
     final mController =
@@ -1088,12 +1107,12 @@ class _SubTrackViewState extends State<SubTrackView>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: cardColor,
-        title: const Text('Korrektur für heute',
-            style: TextStyle(color: Colors.white)),
+        title: Text(l10n.edit_today_title,
+            style: const TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Gib die exakte Zeit ein, die heute insgesamt gelten soll.',
+            Text(l10n.edit_today_desc,
                 style: TextStyle(color: secondaryTextColor, fontSize: 13)),
             const SizedBox(height: 16),
             Row(
@@ -1102,15 +1121,17 @@ class _SubTrackViewState extends State<SubTrackView>
                     child: TextField(
                         controller: hController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                            labelText: 'Stunden', suffixText: 'h'))),
+                        decoration: InputDecoration(
+                            labelText: l10n.hours_label,
+                            suffixText: l10n.hours_unit))),
                 const SizedBox(width: 16),
                 Expanded(
                     child: TextField(
                         controller: mController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                            labelText: 'Minuten', suffixText: 'm'))),
+                        decoration: InputDecoration(
+                            labelText: l10n.minutes_label,
+                            suffixText: l10n.minutes_unit))),
               ],
             ),
           ],
@@ -1118,7 +1139,7 @@ class _SubTrackViewState extends State<SubTrackView>
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('Abbrechen',
+              child: Text(l10n.cancel,
                   style: TextStyle(color: secondaryTextColor))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -1129,7 +1150,7 @@ class _SubTrackViewState extends State<SubTrackView>
               provider.setTodayMinutes(widget.track, (h * 60) + m);
               Navigator.pop(ctx);
             },
-            child: const Text('Speichern'),
+            child: Text(l10n.save),
           ),
         ],
       ),

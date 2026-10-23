@@ -1,0 +1,70 @@
+{
+  "@@locale": "de",
+  "app_title": "Lern-Tracker",
+  "nav_study": "Lernerfolg",
+  "nav_homework": "Hausaufgaben",
+  "tab_tracking": "Erfassung",
+  "tab_heatmap": "Jahres-Heatmap",
+  "your_degrees": "Deine Abschlüsse",
+  "new_degree_tooltip": "Neuen Abschluss hinzufügen",
+  "no_degrees_yet": "Noch keine Abschlüsse angelegt.",
+  "final_exam_prefix": "Endprüfung",
+  "intermediate_exam_prefix": "Zwischenprüfung",
+  "netto_time_title": "Die Netto-Lernzeit",
+  "netto_warning": "3 Stunden physische Anwesenheit in der Bib sind keine 3 Stunden Lernen, wenn man Kaffeepausen macht oder das Handy checkt.",
+  "stopwatch_method_title": "Die Stoppuhr-Methode:",
+  "stopwatch_method_body": "• Nimm eine Smartwatch oder Armbanduhr mit Stoppuhr.\n• Starte die Uhr nur, wenn du aktiv denkst und liest.\n• Pausiere die Uhr bei jeder Unterbrechung sofort.\n• Trage abends nur die tatsächliche Netto-Zeit hier ein.",
+  "understood": "Verstanden",
+  "netto_philosophy_tooltip": "Das Prinzip der Netto-Lernzeit",
+  "onboarding_title": "Miss deine echte Netto-Zeit",
+  "onboarding_warning_title": "Vermeide den Selbstbetrug!",
+  "onboarding_warning_body": "Unser Zeitgefühl ist extrem trügerisch: Wer 3 Stunden in der Bibliothek sitzt, aber nach 20 Minuten raucht, aufs Smartphone schaut oder quatscht, hat nicht 3 Stunden gelernt – sondern vielleicht nur 45 echte Minuten. In 45 Minuten Netto-Zeit kannst du den Stoff von 3 Stunden nicht beherrschen.",
+  "onboarding_tip_title": "Die Smartwatch- / Stoppuhr-Methode:",
+  "onboarding_tip_body": "• Nutze am besten eine Smartwatch oder Armbanduhr mit Stoppuhr.\n• Start: Drücke Start genau dann, wenn du dich voll auf das Skript konzentrierst.\n• Pause: Qualmt der Kopf oder schaust du aus dem Fenster? Stoppuhr sofort anhalten!\n• Erfassen: Trage nur die gestoppte Netto-Zeit hier ein. Sei 100% ehrlich zu dir selbst.",
+  "first_degree_button": "Deinen ersten Abschluss anlegen",
+  "week_tracked": "Diese Woche erfasst",
+  "total_time": "Gesamte Zeit:",
+  "today_tracked": "Heute erfasst:",
+  "hours_label": "Stunden",
+  "minutes_label": "Minuten",
+  "hours_unit": "h",
+  "minutes_unit": "m",
+  "add_time_button": "Zeit hinzufügen",
+  "history_title": "Lernfortschritt Historie",
+  "history_weeks": "{count} Wochen",
+  "@history_weeks": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "countdown_text": "Noch {weeks} Wochen ({days} Tage) bis zur {target}!",
+  "@countdown_text": {
+    "placeholders": {
+      "weeks": { "type": "int" },
+      "days": { "type": "int" },
+      "target": { "type": "String" }
+    }
+  },
+  "heatmap_title": "365 Tage Übersicht",
+  "heatmap_days_ratio": "{active} / 365 Tage",
+  "@heatmap_days_ratio": {
+    "placeholders": {
+      "active": { "type": "int" }
+    }
+  },
+  "heatmap_subtitle": "Aktiv ab 20 Min. Je länger du gelernt hast, desto kräftiger leuchtet das Feld.",
+  "heatmap_legend_min": "< 20m",
+  "heatmap_legend_max": "≥ 3h",
+  "edit_today_title": "Korrektur für heute",
+  "edit_today_desc": "Gib die exakte Zeit ein, die heute insgesamt gelten soll.",
+  "cancel": "Abbrechen",
+  "save": "Speichern",
+  "create_degree_title": "Neuen Abschluss anlegen",
+  "edit_degree_title": "Abschluss bearbeiten",
+  "degree_input_label": "Abschluss / Weiterbildung",
+  "degree_input_hint": "z.B. IHK Controller, IHK Betriebswirt",
+  "exam_final_label": "Endprüfung / Hauptprüfung",
+  "intermediate_exam_switch": "Hat Zwischenprüfung / WBQ",
+  "intermediate_exam_label": "Datum Zwischenprüfung",
+  "not_set": "Nicht festgelegt"
+}
