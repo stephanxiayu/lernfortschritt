@@ -1,4 +1,4 @@
-package com.example.lernfortschritt
+package com.lernfortschritt.lernfortschritt
 
 import io.flutter.embedding.android.FlutterActivity
 
