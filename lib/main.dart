@@ -1,7 +1,6 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-
 import 'package:intl/intl.dart';
 import 'package:lernfortschritt/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -571,6 +570,12 @@ class _SubTrackViewState extends State<SubTrackView>
   final TextEditingController _hoursController = TextEditingController();
   final TextEditingController _minutesController = TextEditingController();
 
+  // Eigene FocusNodes gegen Fokus-Blockaden
+  final FocusNode _hoursFocusNode = FocusNode();
+  final FocusNode _minutesFocusNode = FocusNode();
+
+  Future<Map<String, dynamic>>? _statsFuture;
+
   final Color backgroundColor = const Color(0xFF0D1117);
   final Color cardColor = const Color(0xFF161B22);
   final Color accentColor = const Color(0xFF2EA043);
@@ -584,10 +589,33 @@ class _SubTrackViewState extends State<SubTrackView>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reloadStats();
+  }
+
+  @override
+  void didUpdateWidget(covariant SubTrackView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.goal.id != widget.goal.id || oldWidget.track != widget.track) {
+      _reloadStats();
+    }
+  }
+
+  void _reloadStats() {
+    final provider = Provider.of<TrackerProvider>(context, listen: false);
+    setState(() {
+      _statsFuture = provider.getTrackStats(widget.track);
+    });
+  }
+
+  @override
   void dispose() {
     _tabController.dispose();
     _hoursController.dispose();
     _minutesController.dispose();
+    _hoursFocusNode.dispose();
+    _minutesFocusNode.dispose();
     super.dispose();
   }
 
@@ -653,9 +681,10 @@ class _SubTrackViewState extends State<SubTrackView>
         ),
         Expanded(
           child: FutureBuilder<Map<String, dynamic>>(
-            future: provider.getTrackStats(widget.track),
+            future: _statsFuture,
             builder: (ctx, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
+              if (snapshot.connectionState == ConnectionState.waiting &&
+                  !snapshot.hasData) {
                 return Center(
                     child: CircularProgressIndicator(color: successColor));
               }
@@ -821,6 +850,7 @@ class _SubTrackViewState extends State<SubTrackView>
                   height: 48,
                   child: TextField(
                     controller: _hoursController,
+                    focusNode: _hoursFocusNode,
                     keyboardType: TextInputType.number,
                     style: const TextStyle(fontSize: 15),
                     decoration: InputDecoration(
@@ -837,6 +867,7 @@ class _SubTrackViewState extends State<SubTrackView>
                   height: 48,
                   child: TextField(
                     controller: _minutesController,
+                    focusNode: _minutesFocusNode,
                     keyboardType: TextInputType.number,
                     style: const TextStyle(fontSize: 15),
                     decoration: InputDecoration(
@@ -853,18 +884,24 @@ class _SubTrackViewState extends State<SubTrackView>
           SizedBox(
             height: 46,
             child: ElevatedButton.icon(
-              onPressed: () {
+              onPressed: () async {
                 final h = int.tryParse(_hoursController.text) ?? 0;
                 final m = int.tryParse(_minutesController.text) ?? 0;
                 if (h == 0 && m == 0) return;
-                provider.addMinutes(widget.track, (h * 60) + m);
+
                 _hoursController.clear();
                 _minutesController.clear();
-                FocusScope.of(context).unfocus();
+
+                _hoursFocusNode.unfocus();
+                _minutesFocusNode.unfocus();
+
+                await provider.addMinutes(widget.track, (h * 60) + m);
+                _reloadStats();
               },
               icon: const Icon(Icons.add, size: 20),
               label: Text(l10n.add_time_button,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                  style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: accentColor,
                 foregroundColor: Colors.white,
@@ -934,7 +971,8 @@ class _SubTrackViewState extends State<SubTrackView>
     final today = DateTime(now.year, now.month, now.day);
     const int totalWeeks = 52;
 
-    final startDate = today.subtract(const Duration(days: (totalWeeks * 7) - 1));
+    final startDate =
+        today.subtract(const Duration(days: (totalWeeks * 7) - 1));
 
     int activeDaysCount = 0;
     for (int d = 0; d < 365; d++) {
@@ -967,7 +1005,8 @@ class _SubTrackViewState extends State<SubTrackView>
                     decoration: BoxDecoration(
                       color: accentColor.withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: accentColor.withValues(alpha: 0.4)),
+                      border:
+                          Border.all(color: accentColor.withValues(alpha: 0.4)),
                     ),
                     child: Text(
                       l10n.heatmap_days_ratio(activeDaysCount),
@@ -1025,8 +1064,7 @@ class _SubTrackViewState extends State<SubTrackView>
                           }
 
                           return Padding(
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 0.25),
+                            padding: const EdgeInsets.symmetric(vertical: 0.25),
                             child: AspectRatio(
                               aspectRatio: 1,
                               child: Container(
@@ -1056,8 +1094,8 @@ class _SubTrackViewState extends State<SubTrackView>
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Text(l10n.heatmap_legend_min,
-                      style: TextStyle(
-                          color: secondaryTextColor, fontSize: 9)),
+                      style:
+                          TextStyle(color: secondaryTextColor, fontSize: 9)),
                   const SizedBox(width: 3),
                   _buildLegendBox(backgroundColor),
                   const SizedBox(width: 4),
@@ -1072,8 +1110,8 @@ class _SubTrackViewState extends State<SubTrackView>
                   _buildLegendBox(const Color(0xFF15803D)),
                   const SizedBox(width: 3),
                   Text(l10n.heatmap_legend_max,
-                      style: TextStyle(
-                          color: secondaryTextColor, fontSize: 9)),
+                      style:
+                          TextStyle(color: secondaryTextColor, fontSize: 9)),
                 ],
               ),
             ],
@@ -1144,11 +1182,12 @@ class _SubTrackViewState extends State<SubTrackView>
           ElevatedButton(
             style: ElevatedButton.styleFrom(
                 backgroundColor: accentColor, foregroundColor: Colors.white),
-            onPressed: () {
+            onPressed: () async {
               final h = int.tryParse(hController.text) ?? 0;
               final m = int.tryParse(mController.text) ?? 0;
-              provider.setTodayMinutes(widget.track, (h * 60) + m);
               Navigator.pop(ctx);
+              await provider.setTodayMinutes(widget.track, (h * 60) + m);
+              _reloadStats();
             },
             child: Text(l10n.save),
           ),

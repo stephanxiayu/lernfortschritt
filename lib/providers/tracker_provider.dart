@@ -1,7 +1,6 @@
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../db/database_helper.dart';
-
 import '../models/study_goal.dart';
 
 class TrackerProvider with ChangeNotifier {
@@ -28,9 +27,7 @@ class TrackerProvider with ChangeNotifier {
   }
 
   Future<void> init() async {
-    // 1. Einmalige Übernahme aller Daten aus SharedPreferences in SQLite
     await _dbHelper.checkAndMigrateFromSharedPreferences();
-    // 2. Abschlüsse aus SQLite laden
     await loadGoals();
   }
 
@@ -65,6 +62,10 @@ class TrackerProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  String _formatDate(DateTime d) {
+    return "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
+  }
+
   Future<Map<String, dynamic>> getTrackStats(String track) async {
     final goal = currentGoal;
     if (goal == null || goal.id == null) {
@@ -78,34 +79,36 @@ class TrackerProvider with ChangeNotifier {
     }
 
     final entries = await _dbHelper.getEntriesForGoalAndTrack(goal.id!, track);
-    final today = DateTime.now();
-    final todayStr = "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final todayStr = _formatDate(today);
 
-    int todayMins = 0;
-    int grandTotal = 0;
+    // 1. dailyMap aufbauen - falls mehrere Zeilen für denselben Tag existieren, AUFADDIEREN
     final Map<String, int> dailyMap = {};
-
     for (var e in entries) {
-      final dateKey = "${e.date.year}-${e.date.month.toString().padLeft(2, '0')}-${e.date.day.toString().padLeft(2, '0')}";
-      dailyMap[dateKey] = e.minutes;
-      grandTotal += e.minutes;
-      if (dateKey == todayStr) {
-        todayMins = e.minutes;
-      }
+      final key = _formatDate(e.date);
+      dailyMap[key] = (dailyMap[key] ?? 0) + e.minutes;
     }
 
-    // Wochen-Minuten (Samstag als Start)
-    final daysToSubtract = (today.weekday + 1) % 7;
-    final startOfWeek = DateTime(today.year, today.month, today.day).subtract(Duration(days: daysToSubtract));
+    // 2. Heute erfasst
+    final int todayMins = dailyMap[todayStr] ?? 0;
+
+    // 3. Gesamtzeit (Summe aller echten Tage)
+    int grandTotal = 0;
+    dailyMap.forEach((_, mins) => grandTotal += mins);
+
+    // 4. Laufende Woche (Montag bis Sonntag)
+    // DateTime.weekday: Mo=1, Di=2 ... So=7 -> Montag = today - (weekday - 1)
+    final startOfWeek = today.subtract(Duration(days: today.weekday - 1));
 
     int weeklyTotal = 0;
     for (int i = 0; i < 7; i++) {
       final d = startOfWeek.add(Duration(days: i));
-      final k = "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
+      final k = _formatDate(d);
       weeklyTotal += dailyMap[k] ?? 0;
     }
 
-    // Historie der vergangenen Wochen
+    // 5. Historie der vergangenen Wochen
     List<Map<String, dynamic>> pastWeeks = [];
     DateTime? earliestDate = entries.isNotEmpty ? entries.last.date : null;
     int maxWeeksBack = 4;
@@ -120,7 +123,7 @@ class TrackerProvider with ChangeNotifier {
       int pastTotal = 0;
       for (int d = 0; d < 7; d++) {
         final day = pastWeekStart.add(Duration(days: d));
-        final k = "${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}";
+        final k = _formatDate(day);
         pastTotal += dailyMap[k] ?? 0;
       }
 
@@ -145,16 +148,20 @@ class TrackerProvider with ChangeNotifier {
     final goal = currentGoal;
     if (goal == null || goal.id == null) return;
 
-    final today = DateTime.now();
-    final todayStr = "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final todayStr = _formatDate(today);
+    
     final entries = await _dbHelper.getEntriesForGoalAndTrack(goal.id!, track);
 
-    final currentEntry = entries.where((e) {
-      final k = "${e.date.year}-${e.date.month.toString().padLeft(2, '0')}-${e.date.day.toString().padLeft(2, '0')}";
-      return k == todayStr;
-    }).toList();
+    // Bisherige Minuten für den heutigen Tag ermitteln
+    int currentMins = 0;
+    for (var e in entries) {
+      if (_formatDate(e.date) == todayStr) {
+        currentMins += e.minutes;
+      }
+    }
 
-    final currentMins = currentEntry.isNotEmpty ? currentEntry.first.minutes : 0;
     await _dbHelper.setDayMinutes(goal.id!, track, today, currentMins + minutesToAdd);
     notifyListeners();
   }
@@ -162,7 +169,10 @@ class TrackerProvider with ChangeNotifier {
   Future<void> setTodayMinutes(String track, int exactMinutes) async {
     final goal = currentGoal;
     if (goal == null || goal.id == null) return;
-    await _dbHelper.setDayMinutes(goal.id!, track, DateTime.now(), exactMinutes);
+    
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    await _dbHelper.setDayMinutes(goal.id!, track, today, exactMinutes);
     notifyListeners();
   }
 }
