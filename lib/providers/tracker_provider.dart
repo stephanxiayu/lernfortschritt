@@ -65,8 +65,7 @@ class TrackerProvider with ChangeNotifier {
   String _formatDate(DateTime d) {
     return "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
   }
-
-  Future<Map<String, dynamic>> getTrackStats(String track) async {
+Future<Map<String, dynamic>> getTrackStats(String track) async {
     final goal = currentGoal;
     if (goal == null || goal.id == null) {
       return {
@@ -83,7 +82,7 @@ class TrackerProvider with ChangeNotifier {
     final today = DateTime(now.year, now.month, now.day);
     final todayStr = _formatDate(today);
 
-    // 1. dailyMap aufbauen - falls mehrere Zeilen für denselben Tag existieren, AUFADDIEREN
+    // 1. Alle Tageswerte aufbauen (Dubletten aufsummieren)
     final Map<String, int> dailyMap = {};
     for (var e in entries) {
       final key = _formatDate(e.date);
@@ -93,29 +92,32 @@ class TrackerProvider with ChangeNotifier {
     // 2. Heute erfasst
     final int todayMins = dailyMap[todayStr] ?? 0;
 
-    // 3. Gesamtzeit (Summe aller echten Tage)
+    // 3. Gesamte Zeit aller Zeiten
     int grandTotal = 0;
     dailyMap.forEach((_, mins) => grandTotal += mins);
 
-    // 4. Laufende Woche (Montag bis Sonntag)
-    // DateTime.weekday: Mo=1, Di=2 ... So=7 -> Montag = today - (weekday - 1)
-    final startOfWeek = today.subtract(Duration(days: today.weekday - 1));
+    // 4. Reguläre Kalenderwoche: Montag bis Sonntag
+    // DateTime.weekday: Mo = 1, Di = 2, Mi = 3, Do = 4, Fr = 5, Sa = 6, So = 7
+    // Tage seit Montag dieser Woche:
+    final daysSinceMonday = today.weekday - DateTime.monday; // Mo=0, Di=1, ..., So=6
+    final startOfWeek = today.subtract(Duration(days: daysSinceMonday));
 
+    // Wir summieren exakt von Montag bis einschließlich heute
     int weeklyTotal = 0;
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i <= daysSinceMonday; i++) {
       final d = startOfWeek.add(Duration(days: i));
       final k = _formatDate(d);
       weeklyTotal += dailyMap[k] ?? 0;
     }
 
-    // 5. Historie der vergangenen Wochen
+    // 5. Historie der vergangenen Wochen (jeweils 7 Tage von Montag bis Sonntag)
     List<Map<String, dynamic>> pastWeeks = [];
     DateTime? earliestDate = entries.isNotEmpty ? entries.last.date : null;
-    int maxWeeksBack = 4;
+    int maxWeeksBack = 11;
 
     if (earliestDate != null && earliestDate.isBefore(startOfWeek)) {
       final diffDays = startOfWeek.difference(earliestDate).inDays;
-      maxWeeksBack = max(4, (diffDays / 7).ceil());
+      maxWeeksBack = max(11, (diffDays / 7).ceil());
     }
 
     for (int w = 1; w <= maxWeeksBack; w++) {

@@ -344,7 +344,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   ),
                   IconButton(
                     icon: Icon(Icons.info_outline_rounded,
-                        color: secondaryTextColor, size: 22),
+                        color: Colors.redAccent, size: 22),
                     tooltip: l10n.netto_philosophy_tooltip,
                     onPressed: () => _showNettoPhilosophyDialog(context),
                   ),
